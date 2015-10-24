@@ -1,0 +1,279 @@
+Sub Macro1_UpdateAndCopy()
+Application.DisplayAlerts = False
+Dim pt As PivotTable
+Set pt = Sheets("Sheet1").PivotTables("PivotTable1")
+pt.RefreshTable
+
+Sheets("Sheet1").Select
+'Create sheet for results or delete existing and create
+Dim sh As Worksheet, flg As Boolean
+For Each sh In Worksheets
+If sh.Name Like "Matrix" Then flg = True: Exit For
+Next
+
+If flg = True Then
+Sheets("Matrix").Select
+ActiveWindow.SelectedSheets.Delete
+Sheets.Add.Name = "Matrix"
+Else
+Sheets.Add.Name = "Matrix"
+End If
+
+'Copy Pivot
+Sheets("Sheet1").Select
+Dim LastRow As Long
+    With ActiveSheet
+        LastRow = .Range("A1").SpecialCells(xlCellTypeLastCell).Row
+    End With
+    
+Dim LastColumn As Long
+    With ActiveSheet
+        LastColumn = .Range("A1").SpecialCells(xlCellTypeLastCell).Column
+    End With
+    
+Range(Cells(1, 1), Cells(LastRow, LastColumn)).Select
+Selection.Copy
+
+Sheets("Matrix").Select
+Cells(1, 1).Select
+
+Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+        
+Application.DisplayAlerts = True
+
+Call Macro2_InsertText
+End Sub
+
+Sub Macro2_InsertText()
+
+
+Dim LastRow As Long
+    With ActiveSheet
+        LastRow = .Range("B1").SpecialCells(xlCellTypeLastCell).Row
+    End With
+    
+Dim LastColumn As Long
+    With ActiveSheet
+        LastColumn = .Range("A1").SpecialCells(xlCellTypeLastCell).Column
+    End With
+    
+    Range(Columns(1), Columns(LastColumn)).Select
+    With Selection
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlBottom
+        .WrapText = False
+        .Orientation = 0
+        .AddIndent = False
+        .IndentLevel = 0
+        .ShrinkToFit = False
+        .ReadingOrder = xlContext
+        .MergeCells = False
+    End With
+    
+Dim a
+For irow = 4 To LastRow
+    a = Cells(irow, 2).Value
+    For icol = 3 To LastColumn
+        If (Cells(irow, icol).Value > 0) Then
+            Cells(irow, icol).Value = a
+        End If
+    Next icol
+Next irow
+    
+Columns("B").EntireColumn.Delete
+Columns("A:AZ").EntireColumn.AutoFit
+    
+Call Macro3_FitTable
+End Sub
+
+Sub Macro3_FitTable()
+
+
+Dim LastRow As Long
+    With ActiveSheet
+        LastRow = .Range("B1").SpecialCells(xlCellTypeLastCell).Row
+    End With
+    
+Dim LastColumn As Long
+    With ActiveSheet
+        LastColumn = .Range("A1").SpecialCells(xlCellTypeLastCell).Column
+    End With
+    
+Dim b, temp
+b = 0
+Dim groupRowNum
+    For i = 4 To LastRow
+        If Cells(i, 1) <> b And Cells(i, 1) > 0 Then
+            b = Cells(i, 1)
+            groupRowNum = i
+            GoTo skipLoop
+        End If
+        temp = groupRowNum
+        For icol = 2 To LastColumn
+            If Cells(i, icol) <> 0 Then
+                Do While temp < i
+                    If Cells(temp, icol) = 0 Then
+                        Cells(temp, icol).Value = Cells(i, icol)
+                        Cells(i, icol) = ""
+                        temp = i
+                        GoTo endLoop
+                    Else
+                        temp = temp + 1
+                    End If
+endLoop:
+                Loop
+            End If
+        Next icol
+skipLoop:
+    Next i
+    
+    deletedRows = 0
+        For x = LastRow To 1 Step -1
+            If Application.WorksheetFunction.CountA(Rows(x)) = 0 Then
+            Rows(x).Select
+            Selection.Delete Shift:=xlUp
+            deletedRows = deletedRows + 1
+            End If
+        Next x
+Call Macro4_MergeAndColor(LastRow - deletedRows)
+End Sub
+
+Sub Macro4_MergeAndColor(LastRow As Long)
+Cells(1, 1).Value = ""
+    
+Dim LastColumn As Long
+    With ActiveSheet
+        LastColumn = .Range("A3").SpecialCells(xlCellTypeLastCell).Column
+    End With
+    
+    Range(Cells(4, 1), Cells(LastRow, 1)).Select
+    
+ With Selection.Font
+        .Name = "Calibri"
+        .Size = 12
+        .Strikethrough = False
+        .Superscript = False
+        .Subscript = False
+        .OutlineFont = False
+        .Shadow = False
+        .Underline = xlUnderlineStyleNone
+        .ThemeColor = xlThemeColorDark1
+        .TintAndShade = 0
+        .ThemeFont = xlThemeFontMinor
+    End With
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .Color = 12611584
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    
+    Range(Cells(2, 2), Cells(3, LastColumn - 1)).Select
+    
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .ThemeColor = xlThemeColorDark2
+        .TintAndShade = -9.99786370433668E-02
+        .PatternTintAndShade = 0
+    End With
+    
+    Range(Cells(2, 1), Cells(LastRow, LastColumn - 1)).Select
+    
+    With Selection.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    
+    'merge Groups
+    vallindex = 4
+    For ind = 5 To LastRow
+        If Cells(ind, 1) < 1 Then
+            Range(Cells(vallindex, 1), Cells(ind, 1)).Select
+            Selection.Merge
+            With Selection
+                .HorizontalAlignment = xlCenter
+                .VerticalAlignment = xlTop
+                .WrapText = False
+                .Orientation = 0
+                .AddIndent = False
+                .IndentLevel = 0
+                .ShrinkToFit = False
+                .ReadingOrder = xlContext
+                .MergeCells = True
+            End With
+        End If
+    
+    vallindex = ind
+    Next ind
+    
+    'merge Family
+    vallindex = 2
+    For ind = 3 To LastColumn - 1
+        If Cells(2, ind) < 1 Then
+            Range(Cells(2, vallindex), Cells(2, ind)).Select
+            Selection.Merge
+            With Selection
+                .HorizontalAlignment = xlCenter
+                .VerticalAlignment = xlTop
+                .WrapText = False
+                .Orientation = 0
+                .AddIndent = False
+                .IndentLevel = 0
+                .ShrinkToFit = False
+                .ReadingOrder = xlContext
+                .MergeCells = True
+            End With
+        End If
+    
+    vallindex = ind
+    Next ind
+    
+    
+    Range(Cells(1, 1), Cells(LastRow, LastColumn - 1)).Select
+    Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+    Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+    With Selection.Borders(xlEdgeLeft)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlInsideVertical)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    With Selection.Borders(xlInsideHorizontal)
+        .LineStyle = xlContinuous
+        .ColorIndex = 0
+        .TintAndShade = 0
+        .Weight = xlThin
+    End With
+    
+    
+    Cells(1, 1).Select
+End Sub
